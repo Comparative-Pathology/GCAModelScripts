@@ -168,10 +168,13 @@ def main():
     while not bool(w.WlzNextGreyInterval(c.byref(iws[0]))):
       w.WlzNextGreyInterval(c.byref(iws[1]))
       w.WlzNextGreyInterval(c.byref(iws[2]))
-      x = gws[0].u_grintptr.inp.contents.value
-      y = gws[1].u_grintptr.inp.contents.value
-      d, i = kdt.query([x, y], 1)
-      gws[2].u_grintptr.inp.contents = c.c_int(i)
+      n = iws[0].rgtpos - iws[0].lftpos + 1
+      for j in range(0, n):
+        x = gws[0].u_grintptr.inp[j]
+        y = gws[1].u_grintptr.inp[j]
+        d, i = kdt.query([x, y], 1)
+        gws[2].u_grintptr.inp[j] = c.c_int(i)
+      #end
     #end
     for i in range(0, len(obj)):
       w.WlzEndGreyScan(c.byref(iws[i]), c.byref(gws[i]))
