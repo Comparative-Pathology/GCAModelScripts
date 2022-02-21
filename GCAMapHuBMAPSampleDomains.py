@@ -607,7 +607,7 @@ def main():
     outputSurface(block_rng, tr, sam['hubmap_id'])
   elif args.output_type == 'domain':
     outputDomain(block_rng, tr, sam['hubmap_id'])
-  elif args.output_type == 'range':
+  elif args.output_type == 'interval':
     outputMidlineInterval(block_rng, tr, sam['hubmap_id'])
   #end
 
