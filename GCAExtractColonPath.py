@@ -378,7 +378,7 @@ def vecDotProduct2D(a, b):
       a (WlzDVertex2): Vector a
       b (WlzDVertex2): Vector b
     Returns:
-    c (WlzDVertex2): Vector c
+    c (float): Scalar dot product c
   """
 
   c = (a.vtX * b.vtX) + (a.vtY * b.vtY)
@@ -392,7 +392,7 @@ def vecDotProduct3D(a, b):
       a (WlzDVertex3): Vector a
       b (WlzDVertex3): Vector b
     Returns:
-    c (WlzDVertex3): Vector c
+    c (float): Scalar dot product c
   """
 
   c = (a.vtX * b.vtX) + (a.vtY * b.vtY) + (a.vtZ * b.vtZ)
