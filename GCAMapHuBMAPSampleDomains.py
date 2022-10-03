@@ -41,6 +41,7 @@ import json as jsn
 import numpy as np
 import argparse as ap
 import ctypes as c
+from datetime import datetime
 
 libc = c.CDLL('libc.so.6')
 
@@ -130,6 +131,12 @@ def parseArgs():
   parser = ap.ArgumentParser(
       description=
       'Extracts the sample domain from a HuBMAP sample file.')
+  parser.add_argument('-c', '--config', type=str, default=None,
+      help='Corresponding (JSON format) GCA configuration file for the ' +
+           'HuBMAP model which contains the landmark positions. ' +
+           'This is only required for computing midline intervals as the ' +
+           'proportional distance between landmarks. ' +
+           '(default: %(default)s)')
   parser.add_argument('-p', '--path', type=str, default=None,
       metavar='PATH',
       help='Corresponding midline path file in JSON format. ' +
@@ -158,8 +165,10 @@ def parseArgs():
             'Where ' +
             fmtstr(
                 '*surface* is encoded using the VTK ASCII polydata format, ' +
-                '*domain* is a Woolz 3D domain object and ' +
-                '*interval* is a midline index range')) + '.\n' +
+                '*domain* is a Woolz 3D domain object, ' +
+                '*interval* may be either a simple midline index range or ' +
+                'when a GCA config file is given proportional distances ' +
+                'between landmarks')) + '.\n' +
             '(default: %(default)s)')
   parser.add_argument('-v', '--verbose', action='store_true', default=False,
       help='Verbose output for viewing parameter values and debugging. ' +
@@ -437,7 +446,7 @@ def closestPoint(points, q, i0, i1):
   return i_min
 #end
 
-def outputMidlineInterval(block_rng, tr, block_name):
+def outputMidlineInterval(block_rng, tr, block_name, plc):
   """
   Output the midline index interval range
   Parameters
@@ -448,7 +457,11 @@ def outputMidlineInterval(block_rng, tr, block_name):
                Affine transform to apply to unaligned block
   block_name : string
                HuBMAP ID
+  plc :        HuBMAP sample placement
   """
+  global args
+  intervals = None
+  positions = None
   if not bool(args.path):
     errMsg('Path file is required for computing midline path range.')
   #end
@@ -480,6 +493,11 @@ def outputMidlineInterval(block_rng, tr, block_name):
   trblk = np.matmul(tr, block)
   vrbMsg('trblk = \n' + str(trblk))
   # Find indices on path matching registered sample block vertices
+  if bool(args.config):
+    vrbMsg('Computing proportional distance midline path interval.')
+  else:
+    vrbMsg('Computing simple midline path index interval.')
+  #end
   maxrng = m.ceil(np.linalg.norm(trblk[:,1] - trblk[:,0])) * 2
   rng0 = i_blk[8] - maxrng
   rng1 = i_blk[8] + maxrng
@@ -488,16 +506,193 @@ def outputMidlineInterval(block_rng, tr, block_name):
     i_blk[i] = closestPoint(path['points'], trblk[:,i], rng0, rng1)
   #end
   vrbMsg('i_blk = ' + str(i_blk))
+  interval = [min(i_blk), max(i_blk)]
+  vrbMsg('interval = ' + str(interval))
+  landmarks = []
+  if bool(args.config):
+    # Read the config file
+    cfg = readJson(args.config)
+    # Find which path this is
+    path_id = findPathID(cfg, args.path)
+    if not bool(path_id):
+      errMsg('The corresponding path was not found in the given configuration '
+             'file.')
+    #end
+    landmarks = findSortedLandmarks(cfg, path_id)
+    if not bool(landmarks):
+      errMsg('Unable to generate sorted list of landmarks for path ' + path_id)
+    #end
+    vrbMsg('landmarks = ' + str(landmarks))
+    itv_lmk = [['', ''], ['', '']]
+    itv_pos = [0.0, 0.0]
+    tmp = indexToLandmarkPD(landmarks, interval[0])
+    itv_lmk[0] = [tmp[0], tmp[1]]
+    itv_pos[0] = tmp[2]
+    tmp = indexToLandmarkPD(landmarks, interval[1])
+    itv_lmk[1] = [tmp[0], tmp[1]]
+    itv_pos[1] = tmp[2]
+  #end
   f = None
   if args.output == '-':
     f = sys.stdout
   else:
     f = open(args.output, 'w')
   #end
-  print(block_name + ' ' + str(min(i_blk)) + ' ' + str(max(i_blk)), file=f)
+  if bool(args.config):
+    now = datetime.now()
+    splc = str(plc).replace('\'', '"')
+    print('{', file=f)
+    print('"description": "GCA Mapped Spatial Data",', file=f)
+    print('"creation_date": "' + now.strftime('%d-%m-%Y %H:%M:%S') + '",',
+        file=f)
+    print('"provenance": "HuBMAP",', file=f)
+    print('"external_sample_id": "' + block_name + '",', file=f)
+    print('"external_placement": ' + splc + ',', file=f)
+    print('"gca_sample_id": "' + block_name + '",', file=f)
+    print('"gca_model_id": "' + cfg['id'] + '",', file=f)
+    print('"transform": ' + transformToStr(tr) + ',', file=f)
+    print('"intervals": [', file=f)
+    print('  [{', file=f)
+    print('    "landmarks": ["' + itv_lmk[0][0] + '",', file=f, end='')
+    print(' "' + itv_lmk[0][1] + '"],', file=f)
+    print('    "position":' + str(itv_pos[0]), file=f)
+    print('  }, {', file=f)
+    print('    "landmarks": ["' + itv_lmk[1][0] + '",', file=f, end='')
+    print(' "' + itv_lmk[1][1] + '"],', file=f)
+    print('    "position":' + str(itv_pos[1]), file=f)
+    print('  }]', file=f)
+    print('  ]', file=f)
+    print('}', file=f)
+  else:
+    print(block_name + ' ' + str(interval[0]) + ' ' + str(interval[1]), file=f)
+  #end
   if not (f == None or args.output == '-'):
     f.close()
   #end
+#end
+
+def transformToStr(t):
+  """
+  Creates a simple string representation of an 4x4 affine transfom matrix
+  Parameters
+  ----------
+  t :          array
+               Affine transform 
+  Returns
+  -------
+  s :          string
+               String representation of the affine transform
+  """
+  s = ('[[' + str(t[0][0]) + ', ' + str(t[0][1]) + ', ' +
+              str(t[0][2]) + ', ' + str(t[0][3]) + '], ' +
+       '[' +  str(t[1][0]) + ', ' + str(t[1][1]) + ', ' +
+              str(t[1][2]) + ', ' + str(t[1][3]) + '], ' +
+       '[' +  str(t[2][0]) + ', ' + str(t[2][1]) + ', ' +
+              str(t[2][2]) + ', ' + str(t[2][3]) + '], ' +
+       '[0.0, 0.0, 0.0, 1.0]]')
+  return(s)
+#end
+
+def indexToLandmarkPD(landmarks, idx):
+  """
+  Given a spline index and the pre-sorted list of landmarks computes the
+  landmark bounded proportional distance
+  Parameters
+  ----------
+  landmarks :   array
+                Pre-sorted list of landmarks each of which has a position and a
+                GCA id. The landmarks must be pre-sorted by distance.
+  idx:          The spline index.
+  Returns
+  -------
+  lpd :         tuple
+                Tuple of lower landmark, upper landmark and proportional
+                distance from the lower to the upper landmark in terms of
+                the spline index
+  """
+  li = 0
+  lmk = [None, None]
+  for i in range(0, len(landmarks)):
+    l = landmarks[i]
+    lp = l['position']
+    if (lp <= idx):
+      li = i
+    else:
+      break
+    #end
+  #end
+  lmk[0] = landmarks[li]
+  if li + 1 < len(landmarks):
+    lmk[1] = landmarks[li + 1]
+  else:
+    lmk[1] = lmk[0]
+  #end
+  pd = 0.0
+  if lmk[1]['position'] > lmk[0]['position']:
+    pd = (idx - lmk[0]['position']) / (lmk[1]['position'] - lmk[0]['position'])
+  #end
+  lpd = (lmk[0]['id'], lmk[1]['id'], pd)
+  return lpd
+#end
+
+def findSortedLandmarks(cfg, pth_id):
+  """
+  Finds and sorts (by position) the landmarks in the given GCA configuration
+  with the given GCA path ID.
+  Parameters
+  ----------
+  cfg :        GCA configuration
+  pth_id :     GCA path ID
+  Returns
+  -------
+  array of dictionary
+               Sorted array of {'id', 'position'}
+  """
+  lmks = cfg['landmarks']
+  sla = []
+  for i in range(0, len(lmks)):
+    lmk = lmks[i]
+    path_ids = lmk['paths']
+    for j in range(0, len(path_ids)):
+      if pth_id == path_ids[j]:
+        sla.append({'position': lmk['position'][j],
+                    'id': lmk['anatomy'][j]['id']})
+        break
+      #end
+    #end
+  #end
+  if len(sla) > 0:
+    sla.sort(key= lambda item: item.get('position'))
+  else:
+    sla = None
+  #end
+  return sla
+#end
+
+def findPathID(cfg, pth):
+  """
+  Finds and returns the GCA path ID in the given GCA configuration which
+  has the same filename as the given path file
+  Parameters
+  ----------
+  cfg :        GCA configuration
+  pth :        Given path file
+  Returns
+  -------
+  string
+              GCA path ID
+  """
+  pth_id = None
+  paths = cfg['paths']
+  # Strip directories from path
+  p0 = os.path.basename(pth)
+  for i in range(0, len(paths)):
+    p = paths[i]
+    if os.path.basename(p['spline_filename']) == p0:
+      pth_id = p['id']
+    #end 
+  #end
+  return pth_id
 #end
 
 def computeTransform(plc):
@@ -608,7 +803,7 @@ def main():
   elif args.output_type == 'domain':
     outputDomain(block_rng, tr, sam['hubmap_id'])
   elif args.output_type == 'interval':
-    outputMidlineInterval(block_rng, tr, sam['hubmap_id'])
+    outputMidlineInterval(block_rng, tr, sam['hubmap_id'], plc)
   #end
 
 
