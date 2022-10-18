@@ -55,7 +55,7 @@ except ImportError:
 #end
 
 args = None
-script_version = '0.0.1'
+SCRIPT_VERSION = '0.0.2'
 
 valid_output_types = ['surface', 'domain', 'interval']
 
@@ -130,7 +130,8 @@ def parseArgs():
   global tr_rtom_11
   parser = ap.ArgumentParser(
       description=
-      'Extracts the sample domain from a HuBMAP sample file.')
+      'Extracts the sample domain from a HuBMAP sample file. ' +
+      'Version: ' + SCRIPT_VERSION)
   parser.add_argument('-c', '--config', type=str, default=None,
       help='Corresponding (JSON format) GCA configuration file for the ' +
            'HuBMAP model which contains the landmark positions. ' +
@@ -543,6 +544,8 @@ def outputMidlineInterval(block_rng, tr, block_name, plc):
     splc = str(plc).replace('\'', '"')
     print('{', file=f)
     print('"description": "GCA Mapped Spatial Data",', file=f)
+    print('"created_by": "GCAMapHuBMAPSampleDomains.py ' +
+        SCRIPT_VERSION + '",', file=f)
     print('"creation_date": "' + now.strftime('%d-%m-%Y %H:%M:%S') + '",',
         file=f)
     print('"provenance": "HuBMAP",', file=f)
@@ -715,7 +718,7 @@ def computeTransform(plc):
        [ 0,  0,  0,  1]])
   vrbMsg('tr_tln = \n' + str(tr_tln))
   # Compute rotation transform tr_rot where
-  # tr_rot = tr_rot_z * tr_rot_y * tr_rot_x for order XYZ
+  # tr_rot = tr_rot_x * tr_rot_y * tr_rot_z for order XYZ
   r = degtorad(plc['x_rotation'])
   cr = m.cos(r)
   sr = m.sin(r)
@@ -749,7 +752,7 @@ def computeTransform(plc):
   tr_rot_z[2][2] =  1.0
   tr_rot_z[3][3] =  1.0
   vrbMsg('tr_rot_z = \n' + str(tr_rot_z))
-  tr_rot = np.matmul(tr_rot_z, np.matmul(tr_rot_y, tr_rot_x))
+  tr_rot = np.matmul(tr_rot_x, np.matmul(tr_rot_y, tr_rot_z))
   vrbMsg('tr_rot = \n' + str(tr_rot))
   # Compute scaling transform tr_scl. This assumes scale is ratio
   tr_scl = np.zeros((4,4))
@@ -812,7 +815,7 @@ def main():
 if __name__ == '__main__':
   # Proccess command line
   parseArgs()
-  vrbMsg(sys.argv[0] + ' version: ' + script_version)
+  vrbMsg(sys.argv[0] + ' version: ' + SCRIPT_VERSION)
   main()
   sys.exit(0)
 #end
