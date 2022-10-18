@@ -55,7 +55,7 @@ except ImportError:
 #end
 
 args = None
-SCRIPT_VERSION = '0.0.2'
+SCRIPT_VERSION = '0.0.3'
 
 valid_output_types = ['surface', 'domain', 'interval']
 
