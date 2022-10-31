@@ -28,8 +28,8 @@
 # Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
 # Boston, MA  02110-1301, USA.
 # 
-# Computes the 3D spatial mapping of a HuBMAP Large Intestine sample to
-# a HuBMAP v1.1 large intestine model.
+# Computes the 3D spatial mapping of a HuBMAP male/female large/small Intestine
+# sample to a corresponding HuBMAP v1.1 model.
 ###
 
 from __future__ import print_function
@@ -55,7 +55,7 @@ except ImportError:
 #end
 
 args = None
-SCRIPT_VERSION = '0.0.3'
+SCRIPT_VERSION = '0.0.4'
 
 valid_output_types = ['surface', 'domain', 'interval']
 
@@ -138,6 +138,9 @@ def parseArgs():
            'This is only required for computing midline intervals as the ' +
            'proportional distance between landmarks. ' +
            '(default: %(default)s)')
+  parser.add_argument('-k', '--check-sample-file', action='store_true',
+                      default=False,
+      help='Check the sample file is valid before processing it')
   parser.add_argument('-p', '--path', type=str, default=None,
       metavar='PATH',
       help='Corresponding midline path file in JSON format. ' +
@@ -240,7 +243,9 @@ def checkSamFileValid(sam):
                     'ascending colon', 'hepatic flexure',
                     'transverse colon' 'splenic flexure',
                     'descending colon', 'sigmoid colon',
-                    'rectum', 'anus'])
+                    'rectum', 'anus',
+                    'small intestine', 'small bowel',
+                    'duodenum', 'jejunum', 'ileum', 'terminal ileum'])
   if bool(sam):
     for i in range(0, 4):
       key = 'anatomy_' + str(i)
@@ -499,7 +504,7 @@ def outputMidlineInterval(block_rng, tr, block_name, plc):
   else:
     vrbMsg('Computing simple midline path index interval.')
   #end
-  maxrng = m.ceil(np.linalg.norm(trblk[:,1] - trblk[:,0])) * 2
+  maxrng = m.ceil(np.linalg.norm(trblk[:,0] - trblk[:,7])) * 2
   rng0 = i_blk[8] - maxrng
   rng1 = i_blk[8] + maxrng
   vrbMsg('[rng0, rng1] = [' + str(rng0) + ', ' + str(rng1) + ']')
@@ -543,6 +548,7 @@ def outputMidlineInterval(block_rng, tr, block_name, plc):
     now = datetime.now()
     splc = str(plc).replace('\'', '"')
     print('{', file=f)
+    print('"ident": "GCA LBPD Intervals 0.0.1",', file=f)
     print('"description": "GCA Mapped Spatial Data",', file=f)
     print('"created_by": "GCAMapHuBMAPSampleDomains.py ' +
         SCRIPT_VERSION + '",', file=f)
@@ -780,7 +786,7 @@ def computeTransform(plc):
 def main():
   global args
   sam = readJson(args.sam_file)
-  if not checkSamFileValid(sam):
+  if args.check_sample_file and (not checkSamFileValid(sam)):
     errMsg('Sample file does not have a relevant registered location.')
   #end
   loc = jsn.loads(sam['rui_location'])
