@@ -55,7 +55,7 @@ except ImportError:
 #end
 
 args = None
-SCRIPT_VERSION = '0.0.4'
+SCRIPT_VERSION = '0.0.5'
 
 valid_output_types = ['surface', 'domain', 'interval']
 
@@ -466,6 +466,7 @@ def outputMidlineInterval(block_rng, tr, block_name, plc):
   plc :        HuBMAP sample placement
   """
   global args
+  cfg = None
   intervals = None
   positions = None
   if not bool(args.path):
@@ -546,19 +547,43 @@ def outputMidlineInterval(block_rng, tr, block_name, plc):
   #end
   if bool(args.config):
     now = datetime.now()
+    pv = ''
+    mcv = ''
+    if 'version' in cfg:
+      mcv = str(cfg['version'])
+    #end
+    if 'sub_version' in cfg:
+      mcv = mcv + '.' + str(cfg['sub_version'])
+    #end
+    if len(mcv) == 0:
+      mcv = 'unkown'
+    #end
+    if 'version' in path:
+      pv = path['version']
+    else:
+      pv = 'unknown'
+    #end
     splc = str(plc).replace('\'', '"')
     print('{', file=f)
     print('"ident": "GCA LBPD Intervals 0.0.1",', file=f)
-    print('"description": "GCA Mapped Spatial Data",', file=f)
+    print('"description": "GCA Mapped Spatial Data. ' +
+          'Intervals are represented as ordered start then end positions, ' +
+          'with each position being represented as a proportional distance ' +
+          'from the first to the second landmark. All landmarks and ' +
+          'positions directed from the anus towards the gastro-duodenum ' +
+          'junction. ' +
+          'A transform is from the unaligned source to the gca_model. ' +
+          '",', file=f)
     print('"created_by": "GCAMapHuBMAPSampleDomains.py ' +
         SCRIPT_VERSION + '",', file=f)
     print('"creation_date": "' + now.strftime('%d-%m-%Y %H:%M:%S') + '",',
         file=f)
-    print('"provenance": "HuBMAP",', file=f)
-    print('"external_sample_id": "' + block_name + '",', file=f)
-    print('"external_placement": ' + splc + ',', file=f)
+    print('"source": "HuBMAP",', file=f)
+    print('"source_sample_id": "' + block_name + '",', file=f)
+    print('"source_placement": ' + splc + ',', file=f)
     print('"gca_sample_id": "' + block_name + '",', file=f)
-    print('"gca_model_id": "' + cfg['id'] + '",', file=f)
+    print('"gca_model": "' + cfg['id'] + ' ' + mcv + '",', file=f)
+    print('"gca_path": "' + path_id + ' ' + pv  + '",', file=f)
     print('"transform": ' + transformToStr(tr) + ',', file=f)
     print('"intervals": [', file=f)
     print('  [{', file=f)
