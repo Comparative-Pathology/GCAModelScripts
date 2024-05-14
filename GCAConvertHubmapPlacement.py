@@ -886,6 +886,9 @@ def main():
 
 
 if __name__ == '__main__':
+  if not isPython3():
+    errMsg('Python 3 is required for this script.')
+  #end
   # Proccess command line
   parseArgs()
   vrbMsg(1, sys.argv[0] + ' version: ' + SCRIPT_VERSION)
