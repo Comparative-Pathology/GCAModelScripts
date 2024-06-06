@@ -71,7 +71,7 @@ GF="$GCA_MODEL_HOME"/models/HuBMAPVHF_3D_00080/
 
 micromamba run -n trimesh python \\
 ./mapSurfItvToHuBMAP.py \\
-    -v 1 \\
+    -v 1 -t m \\
     -c $GCA_MODEL_HOME/HuBMAPVHM_3D_00070_1_5.json \\
     -p $GM/paths/VH_M_Small_Intestine_v11_path-bs.jsn \\
     -P  $GM/paths/VHM_Colon_Low_path_11-bs.jsn \\
@@ -79,7 +79,7 @@ micromamba run -n trimesh python \\
 
 micromamba run -n trimesh python \\
 ./mapSurfItvToHuBMAP.py \\
-    -v 1 \\
+    -v 1 -t f \\
     -c $GCA_MODEL_HOME/HuBMAPVHF_3D_00080_1_6.json \\
     -p $GF/paths/VH_F_Small_Intestine_v11_path-bs.jsn \\
     -P $GF/paths/VH_F_colon_v11_path-bs.jsn \\
