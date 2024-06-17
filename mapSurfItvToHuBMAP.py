@@ -107,9 +107,9 @@ tr_htoe_fl = np.array(
 # Transform from HuBMAP registration interface coordinates to HuBMAP male
 # large intestine v1.1
 tr_htoe_ml = np.array(
-    [[ 0.00103615,  -3.98108e-5,   5.7803e-5,    -0.119858],
-     [ 9.59889e-5,  -4.30641e-5,  -0.000967827,   0.0744525],
-     [-2.21515e-5,   0.00100179,   1.95871e-6,   -0.0359116],
+    [[ 1.03615,     -0.0398108,   0.057803,      -119.858],
+     [ 0.0959889,   -0.043641,   -0.967827,       74.4525],
+     [-0.0221515,    1.00179,     0.00195871,    -35.9116],
      [ 0.0,          0.0,          0.0,           1.0]])
 
 # Transform from HuBMAP registration interface coordinates to HuBMAP female
