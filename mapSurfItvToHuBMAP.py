@@ -427,9 +427,8 @@ def plmFromSurf(srf, pnm):
   vrbMsg(1, '          = ' +
       str((radToDeg(rots[0]), radToDeg(rots[1]), radToDeg(rots[2]))))
   date = dt.datetime.now().strftime('%Y-%m-%d')
-  minm = 'm' in model['target']
-  linm = 'l' in model['target']
   ogn = ''
+  linm = 'l' in model['target']
   if('m' in model['target']):
     ogn = 'M' + ('Colon' if linm else 'SmallIntestine')
   else:
